@@ -2,7 +2,7 @@
 
     $ ls Dockerfile
     Dockerfile
-    $ do 'echo Hi from Docker conatiner $HOSTNAME'
+    $ ddo 'echo Hi from Docker conatiner $HOSTNAME'
     Sending build context to Docker daemon 3.072 kB
     Sending build context to Docker daemon 
     Step 0 : FROM ubuntu:14.04
@@ -11,7 +11,7 @@
     ...
     Successfully built ab2d56f2dace
     Hi from Docker conatiner 02825e0e3a81
-    $ do 'echo Hi from Docker conatiner $HOSTNAME'
+    $ ddo 'echo Hi from Docker conatiner $HOSTNAME'
     Hi from Docker conatiner 19807cd744fc
 
 ## Sample Use-Case
@@ -34,4 +34,4 @@ Create a `Dockerfile` that encapsulates your build environment, e.g.:
 
 And then simply run this to build your source inside the build environment:
 
-    $ do make
+    $ ddo make
