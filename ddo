@@ -4,6 +4,27 @@
 
 set -e
 
+function die_usage {
+	echo "Usage: $0 [OPTIONS FOR DOCKER RUN] [COMMAND]"
+	exit 1
+}
+
+# parse command line
+docker_run_args=
+while getopts "ti" opt; do
+	case "$opt" in
+	t)	docker_run_args="$docker_run_args -t"
+		;;
+	i)	docker_run_args="$docker_run_args -i"
+		;;
+	\?)	die_usage
+		;;
+	esac
+done
+
+shift $((OPTIND-1))
+cmd="$*"
+
 # find the nearest Dockerfile up the tree
 Dockerfile_dir=$(pwd)
 while [[ "$Dockerfile_dir" != "/" ]]; do
@@ -19,6 +40,7 @@ if [[ "$Dockerfile_dir" == "/" ]]; then
 	exit 1
 fi
 
+# base_dir is where we found the Dockerfile
 base_dir=$(readlink -f $Dockerfile_dir)
 do_dir=$base_dir/.do
 
@@ -29,9 +51,8 @@ abs_wd=$(readlink -f $(pwd))
 rel_wd=$(python -c "import os.path; print os.path.relpath(\"$abs_wd\", \"$base_dir\")")
 
 # build the command to run inside the docker container
-cmd="cd $rel_wd"
-if [[ "$#" -ne 0 ]]; then
-	cmd="$cmd && $*"
+if [[ "$cmd" != "" ]]; then
+	cmd="cd $rel_wd && $cmd"
 fi
 
 # find out the current user id
@@ -55,15 +76,16 @@ fi
 
 # abort if the docker image does not have
 #    ENTRYPOINT ["/bin/sh", "-c"]
-if [[ '{[/bin/sh -c]}' != "$(docker inspect -f '{{.Config.Entrypoint}}' $image_name)" ]]; then
-	echo >&2 "$0: Dockerfile ENTRYPOINT must be set to: [\"/bin/sh\", \"-c\"]. aborting"
+entry_point=$(docker inspect -f '{{.Config.Entrypoint}}' $image_name)
+if [[ $(echo $entry_point | grep -cF /bin/sh) -eq 0 ]]; then
+	echo >&2 "$0: Dockerfile ENTRYPOINT must be set to: [\"/bin/sh\", \"-c\"]; was '$entry_point'. aborting"
 	exit 1
 fi
 
 docker run --rm \
-           -it \
            -u $user_id \
            -v $base_dir:/workspace \
+           $docker_run_args \
            $image_name \
            "$cmd"
 
