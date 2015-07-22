@@ -5,21 +5,21 @@
 set -e
 
 function die_usage {
-	echo "Usage: $0 [OPTIONS FOR DOCKER RUN] [COMMAND]"
-	exit 1
+    echo "Usage: $0 [OPTIONS FOR DOCKER RUN] [COMMAND]"
+    exit 1
 }
 
 # parse command line
 docker_run_args=
 while getopts "ti" opt; do
-	case "$opt" in
-	t)	docker_run_args="$docker_run_args -t"
-		;;
-	i)	docker_run_args="$docker_run_args -i"
-		;;
-	\?)	die_usage
-		;;
-	esac
+    case "$opt" in
+    t)  docker_run_args="$docker_run_args -t"
+        ;;
+    i)  docker_run_args="$docker_run_args -i"
+        ;;
+    \?) die_usage
+        ;;
+    esac
 done
 
 shift $((OPTIND-1))
@@ -28,16 +28,16 @@ cmd="$*"
 # find the nearest Dockerfile up the tree
 Dockerfile_dir=$(pwd)
 while [[ "$Dockerfile_dir" != "/" ]]; do
-	if [[ -f "$Dockerfile_dir/Dockerfile" ]]; then
-		break
-	else
-		Dockerfile_dir=$(dirname "$Dockerfile_dir")
-	fi
+    if [[ -f "$Dockerfile_dir/Dockerfile" ]]; then
+        break
+    else
+        Dockerfile_dir=$(dirname "$Dockerfile_dir")
+    fi
 done
 
 if [[ "$Dockerfile_dir" == "/" ]]; then
-	echo >&2 "$0: could not find Dockerfile anywhere up this tree"
-	exit 1
+    echo >&2 "$0: could not find Dockerfile anywhere up this tree"
+    exit 1
 fi
 
 # base_dir is where we found the Dockerfile
@@ -52,7 +52,7 @@ rel_wd=$(python -c "import os.path; print os.path.relpath(\"$abs_wd\", \"$base_d
 
 # build the command to run inside the docker container
 if [[ "$cmd" != "" ]]; then
-	cmd="cd $rel_wd && $cmd"
+    cmd="cd $rel_wd && $cmd"
 fi
 
 # find out the current user id
@@ -63,23 +63,23 @@ mkdir -p $do_dir
 
 # run `docker build` if necessary
 if [[ -f $do_dir/image_name ]]; then
-	image_name=$(cat $do_dir/image_name)
+    image_name=$(cat $do_dir/image_name)
 else
-	cur_dir_name=$(basename $(dirname $(readlink -f $0)))
-	unique_id=$(date | md5sum | awk '{print $1}')
+    cur_dir_name=$(basename $(dirname $(readlink -f $0)))
+    unique_id=$(date | md5sum | awk '{print $1}')
     image_name=$(echo $cur_dir_name-$unique_id | tr '[:upper:]' '[:lower:]' | tr -d -c '[a-z0-9-_.]')
-	echo $image_name > $do_dir/image_name
-	cd $base_dir
-	docker build -t $image_name .
-	cd -
+    echo $image_name > $do_dir/image_name
+    cd $base_dir
+    docker build -t $image_name .
+    cd -
 fi
 
 # abort if the docker image does not have
 #    ENTRYPOINT ["/bin/sh", "-c"]
 entry_point=$(docker inspect -f '{{.Config.Entrypoint}}' $image_name)
 if [[ $(echo $entry_point | grep -cF /bin/sh) -eq 0 ]]; then
-	echo >&2 "$0: Dockerfile ENTRYPOINT must be set to: [\"/bin/sh\", \"-c\"]; was '$entry_point'. aborting"
-	exit 1
+    echo >&2 "$0: Dockerfile ENTRYPOINT must be set to: [\"/bin/sh\", \"-c\"]; was '$entry_point'. aborting"
+    exit 1
 fi
 
 docker run --rm \
