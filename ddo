@@ -4,18 +4,28 @@
 
 set -e
 
+verbose=0
+
 function die_usage {
-    echo "Usage: $0 [OPTIONS FOR DOCKER RUN] [COMMAND]"
+    echo "Usage: $0 [-v] [OPTIONS FOR DOCKER RUN] [COMMAND]"
     exit 1
+}
+
+function printv {
+    if [[ $verbose -eq 1 ]]; then
+        echo "$0: $*"
+    fi
 }
 
 # parse command line
 docker_run_args=
-while getopts "ti" opt; do
+while getopts "tiv" opt; do
     case "$opt" in
     t)  docker_run_args="$docker_run_args -t"
         ;;
     i)  docker_run_args="$docker_run_args -i"
+        ;;
+    v)  verbose=1
         ;;
     \?) die_usage
         ;;
@@ -61,17 +71,47 @@ user_id=$(id -u)
 # create $do_dir if necessary
 mkdir -p $do_dir
 
-# run `docker build` if necessary
-if [[ -f $do_dir/image_name ]]; then
+# decide is `docker build` is necessary
+build_needed=1
+if [[ -f $do_dir/image_name ]]; then # did we previously build?
     image_name=$(cat $do_dir/image_name)
-else
+
+    # we have an image name, but does it exist?
+    if docker inspect $image_name >/dev/null 2>/dev/null; then
+        # do we have the MD5 of the original Dockerfile?
+        if [[ -f $do_dir/dockerfile_md5 ]]; then
+            orig_dockerfile_md5=$([[ -f $do_dir/dockerfile_md5 ]] && cat $do_dir/dockerfile_md5)
+            curr_dockerfile_md5=$(md5sum $Dockerfile_dir/Dockerfile | awk '{print $1}')
+            # did the Dockerfile change since it was built?
+            if [[ "$orig_dockerfile_md5" == "$curr_dockerfile_md5" ]]; then
+                printv 'Dockerfile did not change since we built the image - no need to do `docker build`'
+                build_needed=0
+            else
+                printv 'Dockerfile changed since we last did `docker build` - will rebuild'
+            fi
+        else
+            # we don't have the original Dockerfile's MD5 (maybe $do_dir was
+            # created with an old version of ddo) - be on the safe side and build
+            printv "could not find original Dockerfile's MD5 ($do_dir/dockerfile_md5) - will do \`docker build\`"
+        fi
+    else
+        printv 'previously built image ($image_name) does not exist - will do `docker build`'
+    fi
+fi
+
+# build if needed
+if [[ $build_needed -eq 1 ]]; then
     cur_dir_name=$(basename $(dirname $(readlink -f $0)))
     unique_id=$(date | md5sum | awk '{print $1}')
     image_name=$(echo $cur_dir_name-$unique_id | tr '[:upper:]' '[:lower:]' | tr -d -c '[a-z0-9-_.]')
-    echo $image_name > $do_dir/image_name
+    curr_dockerfile_md5=$(md5sum $Dockerfile_dir/Dockerfile | awk '{print $1}')
+
     cd $base_dir
     docker build -t $image_name .
     cd -
+
+    echo $image_name > $do_dir/image_name
+    echo $curr_dockerfile_md5 > $do_dir/dockerfile_md5
 fi
 
 # abort if the docker image does not have
