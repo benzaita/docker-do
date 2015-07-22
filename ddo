@@ -50,6 +50,8 @@ if [[ "$Dockerfile_dir" == "/" ]]; then
     exit 1
 fi
 
+printv "found Dockerfile in $Dockerfile_dir"
+
 # base_dir is where we found the Dockerfile
 base_dir=$(readlink -f $Dockerfile_dir)
 do_dir=$base_dir/.do
@@ -106,6 +108,7 @@ if [[ $build_needed -eq 1 ]]; then
     image_name=$(echo $cur_dir_name-$unique_id | tr '[:upper:]' '[:lower:]' | tr -d -c '[a-z0-9-_.]')
     curr_dockerfile_md5=$(md5sum $Dockerfile_dir/Dockerfile | awk '{print $1}')
 
+    printv "running \`docker build\` in $base_dir"
     cd $base_dir
     docker build -t $image_name .
     cd -
@@ -122,6 +125,7 @@ if [[ $(echo $entry_point | grep -cF /bin/sh) -eq 0 ]]; then
     exit 1
 fi
 
+printv "running \`docker run\`"
 docker run --rm \
            -u $user_id \
            -v $base_dir:/workspace \
