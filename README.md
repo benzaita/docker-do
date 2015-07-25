@@ -1,18 +1,16 @@
 # docker-do
 
-    $ ls Dockerfile
-    Dockerfile
-    $ ddo 'echo Hi from Docker conatiner $HOSTNAME'
-    Sending build context to Docker daemon 3.072 kB
-    Sending build context to Docker daemon 
-    Step 0 : FROM ubuntu:14.04
-     ---> 6d4946999d4f
-    ...
-    ...
-    Successfully built ab2d56f2dace
-    Hi from Docker conatiner 02825e0e3a81
-    $ ddo 'echo Hi from Docker conatiner $HOSTNAME'
-    Hi from Docker conatiner 19807cd744fc
+## What happens when I run `ddo COMMAND`?
+
+* `ddo` runs `docker build` if necessary (the image wasn't built yet, or the Dockerfile has changed)
+* `ddo` maps the working directory (where `Dockerfile` resides) to a volume
+* `ddo` runs the `COMMAND` relative to the working directory using `docker run`
+
+## Prerequisites
+
+* `ddo` requires you have a `Dockerfile` somewhere up the tree
+* `ddo` requires that `Dockerfile` to define `ENTRYPOINT ["/bin/sh", "-c"]`
+* `ddo` assumes that `Dockerfile` defines `WORKDIR /workspace`
 
 ## Sample Use-Case
 
@@ -21,17 +19,23 @@ Create a `Dockerfile` that encapsulates your build environment, e.g.:
     $ cat Dockerfile
     FROM ubuntu:14.04
     
-    RUN sudo apt-get update
-    RUN sudo apt-get install -y gcc-arm-linux-gnueabihf
-    RUN sudo apt-get install -y make
-    
-    ENV CROSS_COMPILE arm-linux-gnueabihf-
-    
+    RUN sudo apt-get update && sudo apt-get install -y build-essentials
+    ...
+    ...
+
     VOLUME /workspace
-    
     WORKDIR /workspace
     ENTRYPOINT ["/bin/sh", "-c"]
 
 And then simply run this to build your source inside the build environment:
 
-    $ ddo make
+    ~/myproject $ cd build
+    ~/myproject/build $ ddo -v make
+    ddo: found Dockerfile in /home/benzaita/myproject
+    ddo: running `docker build` in /home/benzaita/myproject
+    Sending build context to Docker daemon 0.1 MB
+    ...
+    ...
+    ddo: running `docker run`
+    ...
+    ...
