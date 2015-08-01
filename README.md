@@ -18,7 +18,7 @@ Create a `Dockerfile` that encapsulates your build environment, e.g.:
 
     $ cat Dockerfile
     FROM ubuntu:14.04
-    
+
     RUN sudo apt-get update && sudo apt-get install -y build-essentials
     ...
     ...
@@ -30,7 +30,8 @@ Create a `Dockerfile` that encapsulates your build environment, e.g.:
 And then simply run this to build your source inside the build environment:
 
     ~/myproject $ cd build
-    ~/myproject/build $ ddo -v make
+	~/myproject/build $ ddo make
+    ~/myproject/build $
     ddo: found Dockerfile in /home/benzaita/myproject
     ddo: running `docker build` in /home/benzaita/myproject
     Sending build context to Docker daemon 0.1 MB
@@ -39,3 +40,10 @@ And then simply run this to build your source inside the build environment:
     ddo: running `docker run`
     ...
     ...
+
+## Passing Arguments to `docker run`
+
+You can pass any argument to `docker run` by separating it from the command to run, e.g.:
+
+    ddo make -- -v /path:/path
+

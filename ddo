@@ -7,7 +7,12 @@ set -e
 verbose=0
 
 function die_usage {
-    echo "Usage: $0 [-v] [OPTIONS FOR DOCKER RUN] [COMMAND]"
+    echo "
+Usage: $0 [-h | --help | COMMAND] [-- OPTIONS FOR DOCKER RUN]
+
+Environment variables:
+	DDO_VERBOSE=1    to increase verbosity
+"
     exit 1
 }
 
@@ -17,23 +22,23 @@ function printv {
     fi
 }
 
-# parse command line
-docker_run_args=
-while getopts "tiv" opt; do
-    case "$opt" in
-    t)  docker_run_args="$docker_run_args -t"
-        ;;
-    i)  docker_run_args="$docker_run_args -i"
-        ;;
-    v)  verbose=1
-        ;;
-    \?) die_usage
-        ;;
-    esac
+verbose=$DDO_VERBOSE
+
+# aggregate all arguments until '--' as the command
+while [[ $# -gt 0 ]] && [[ "$1" != '--' ]]; do
+	if [[ "$1" == "-h" ]] || [[ "$1" == "--help" ]]; then
+		die_usage
+	fi
+
+	cmd="$cmd $1"
+	shift 1
 done
 
-shift $((OPTIND-1))
-cmd="$*"
+# anything after '--' is for `docker run`
+if [[ "$1" == '--' ]]; then
+	shift 1
+	docker_run_args="$*"
+fi
 
 # find the nearest Dockerfile up the tree
 Dockerfile_dir=$(pwd)
