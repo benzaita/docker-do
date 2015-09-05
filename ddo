@@ -11,7 +11,8 @@ function die_usage {
 Usage: $0 [-h | --help | COMMAND] [-- OPTIONS FOR DOCKER RUN]
 
 Environment variables:
-	DDO_VERBOSE=1    to increase verbosity
+	DDO_VERBOSE=1            to increase verbosity
+	DDO_RUN_WITH_MY_UID=1    to invoke 'docker run' with '-u CURRENT_UID'
 "
     exit 1
 }
@@ -130,11 +131,14 @@ if [[ $(echo $entry_point | grep -cF /bin/sh) -eq 0 ]]; then
     exit 1
 fi
 
-printv "running \`docker run\`"
-docker run --rm \
-           -u $user_id \
-           -v $base_dir:/workspace \
-           $docker_run_args \
-           $image_name \
-           "$cmd"
+# build "docker run" command
+docker_run_cmd="docker run --rm"
+if [[ "$DDO_RUN_WITH_MY_UID" == "1" ]]; then
+	docker_run_cmd="$docker_run_cmd -u $user_id"
+fi
+docker_run_cmd="$docker_run_cmd -v $base_dir:/workspace"
+docker_run_cmd="$docker_run_cmd $docker_run_args $image_name \"$cmd\""
+
+printv "running: $docker_run_cmd"
+eval $docker_run_cmd
 
