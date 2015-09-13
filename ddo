@@ -95,7 +95,7 @@ if [[ -f $do_dir/image_name ]]; then # did we previously build?
                 printv 'Dockerfile did not change since we built the image - no need to do `docker build`'
                 build_needed=0
             else
-                printv 'Dockerfile changed since we last did `docker build` - will rebuild'
+                printv 'Dockerfile changed since we last did `docker build` - will remove and rebuild'
             fi
         else
             # we don't have the original Dockerfile's MD5 (maybe $do_dir was
@@ -109,8 +109,16 @@ fi
 
 # build if needed
 if [[ $build_needed -eq 1 ]]; then
+	# remove previously built image
+	if [[ "$image_name" != "" ]]; then
+		rm_cmd="docker rmi $image_name"
+		printv "running '$rm_cmd'"
+		eval $rm_cmd || echo "failed to remove old image ($image_name)"
+	fi
+
+	# build new image
     cur_dir_name=$(basename $(dirname $(readlink -f $0)))
-    unique_id=$(date | md5sum | awk '{print $1}')
+    unique_id=$(md5sum $Dockerfile_dir/Dockerfile | awk '{print $1}')
     image_name=$(echo $cur_dir_name-$unique_id | tr '[:upper:]' '[:lower:]' | tr -d -c '[a-z0-9-_.]')
     curr_dockerfile_md5=$(md5sum $Dockerfile_dir/Dockerfile | awk '{print $1}')
 

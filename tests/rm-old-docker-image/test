@@ -1,0 +1,44 @@
+#!/bin/bash
+
+set -e
+
+echo "-- cleaning up"
+rm -rf .do
+
+echo "-- creating Dockerfile"
+echo "
+FROM busybox
+ENTRYPOINT [\"/bin/sh\", \"-c\"]
+" > Dockerfile
+
+echo "-- running ddo"
+ddo
+
+echo -n "-- reading image name: "
+orig_image_name=$(cat .do/image_name)
+echo $orig_image_name
+
+echo "-- changing Dockerfile"
+echo "
+RUN ls
+" >> Dockerfile
+
+echo "-- running ddo again"
+ddo
+
+echo -n "-- reading image name: "
+new_image_name=$(cat .do/image_name)
+echo $new_image_name
+
+echo "-- running \"docker inspect\" on old image"
+docker_inspect_failed=0
+docker inspect $orig_image_name >/dev/null || docker_inspect_failed=1
+
+if [[ $docker_inspect_failed -eq 0 ]]; then
+	echo "-- expected non-zero exit code; got 0"
+	exit 1
+else
+	echo "-- pass"
+	exit 0
+fi
+
