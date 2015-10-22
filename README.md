@@ -13,7 +13,7 @@
 * `ddo` assumes that `Dockerfile` defines `WORKDIR /workspace`
 * `ddo` on OSX requires coreutils:
 
-    $ brew install coreutils
+    `$ brew install coreutils`
 
 ## Sample Use-Case
 
