@@ -11,8 +11,8 @@ function die_usage {
 Usage: $0 [-h | --help | COMMAND] [-- OPTIONS FOR DOCKER RUN]
 
 Environment variables:
-	DDO_VERBOSE=1            to increase verbosity
-	DDO_RUN_WITH_MY_UID=1    to invoke 'docker run' with '-u CURRENT_UID'
+    DDO_VERBOSE=1            to increase verbosity
+    DDO_RUN_WITH_MY_UID=1    to invoke 'docker run' with '-u CURRENT_UID'
 "
     exit 1
 }
@@ -27,18 +27,40 @@ verbose=$DDO_VERBOSE
 
 # aggregate all arguments until '--' as the command
 while [[ $# -gt 0 ]] && [[ "$1" != '--' ]]; do
-	if [[ "$1" == "-h" ]] || [[ "$1" == "--help" ]]; then
-		die_usage
-	fi
+    if [[ "$1" == "-h" ]] || [[ "$1" == "--help" ]]; then
+        die_usage
+    fi
 
-	cmd="$cmd $1"
-	shift 1
+    cmd="$cmd $1"
+    shift 1
 done
 
 # anything after '--' is for `docker run`
 if [[ "$1" == '--' ]]; then
-	shift 1
-	docker_run_args="$*"
+    shift 1
+    docker_run_args="$*"
+fi
+
+# command compatabile commands
+if readlink -f . > /dev/null 2>&1 ; then
+    readlink_cmd=$(which readlink)
+else
+    if greadlink -f . > /dev/null 2>&1 ; then
+        readlink_cmd=$(which greadlink)
+    else
+        echo "Cannot find a valid 'readlink -f' command"
+        exit 1
+    fi
+fi
+if md5sum --version > /dev/null 2>&1 ; then
+    md5_cmd=$(which md5sum)
+else
+    if md5 -x > /dev/null 2>&1 ; then
+        md5_cmd="$(which md5) -r"
+    else
+        echo "Cannot find a valid 'md5sum' or 'md5' command"
+        exit 1
+    fi
 fi
 
 # find the nearest Dockerfile up the tree
@@ -59,13 +81,13 @@ fi
 printv "found Dockerfile in $Dockerfile_dir"
 
 # base_dir is where we found the Dockerfile
-base_dir=$(readlink -f $Dockerfile_dir)
+base_dir=$($readlink_cmd -f $Dockerfile_dir)
 do_dir=$base_dir/.do
 
 # find where we are relative to $base_dir
 # e.g. if $base_dir is "/tmp/" and the current working-dir is "/tmp/a"
 #      then we want to get just "a"
-abs_wd=$(readlink -f $(pwd))
+abs_wd=$($readlink_cmd -f $(pwd))
 rel_wd=$(python -c "import os.path; print os.path.relpath(\"$abs_wd\", \"$base_dir\")")
 
 # build the command to run inside the docker container
@@ -89,7 +111,7 @@ if [[ -f $do_dir/image_name ]]; then # did we previously build?
         # do we have the MD5 of the original Dockerfile?
         if [[ -f $do_dir/dockerfile_md5 ]]; then
             orig_dockerfile_md5=$([[ -f $do_dir/dockerfile_md5 ]] && cat $do_dir/dockerfile_md5)
-            curr_dockerfile_md5=$(md5sum $Dockerfile_dir/Dockerfile | awk '{print $1}')
+            curr_dockerfile_md5=$($md5_cmd $Dockerfile_dir/Dockerfile | awk '{print $1}')
             # did the Dockerfile change since it was built?
             if [[ "$orig_dockerfile_md5" == "$curr_dockerfile_md5" ]]; then
                 printv 'Dockerfile did not change since we built the image - no need to do `docker build`'
@@ -109,18 +131,18 @@ fi
 
 # build if needed
 if [[ $build_needed -eq 1 ]]; then
-	# remove previously built image
-	if [[ "$image_name" != "" ]]; then
-		rm_cmd="docker rmi $image_name"
-		printv "running '$rm_cmd'"
-		eval $rm_cmd || echo "failed to remove old image ($image_name)"
-	fi
+    # remove previously built image
+    if [[ "$image_name" != "" ]]; then
+        rm_cmd="docker rmi $image_name"
+        printv "running '$rm_cmd'"
+        eval $rm_cmd || echo "failed to remove old image ($image_name)"
+    fi
 
-	# build new image
-    cur_dir_name=$(basename $(dirname $(readlink -f $0)))
-    unique_id=$(md5sum $Dockerfile_dir/Dockerfile | awk '{print $1}')
+    # build new image
+    cur_dir_name=$(basename $(dirname $($readlink_cmd -f $0)))
+    unique_id=$($md5_cmd $Dockerfile_dir/Dockerfile | awk '{print $1}')
     image_name=$(echo $cur_dir_name-$unique_id | tr '[:upper:]' '[:lower:]' | tr -d -c '[a-z0-9-_.]')
-    curr_dockerfile_md5=$(md5sum $Dockerfile_dir/Dockerfile | awk '{print $1}')
+    curr_dockerfile_md5=$($md5_cmd $Dockerfile_dir/Dockerfile | awk '{print $1}')
 
     printv "running \`docker build\` in $base_dir"
     cd $base_dir
@@ -142,7 +164,7 @@ fi
 # build "docker run" command
 docker_run_cmd="docker run --rm"
 if [[ "$DDO_RUN_WITH_MY_UID" == "1" ]]; then
-	docker_run_cmd="$docker_run_cmd -u $user_id"
+    docker_run_cmd="$docker_run_cmd -u $user_id"
 fi
 docker_run_cmd="$docker_run_cmd -v $base_dir:/workspace"
 docker_run_cmd="$docker_run_cmd $docker_run_args $image_name \"$cmd\""

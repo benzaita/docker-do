@@ -11,6 +11,9 @@
 * `ddo` requires you have a `Dockerfile` somewhere up the tree
 * `ddo` requires that `Dockerfile` to define `ENTRYPOINT ["/bin/sh", "-c"]`
 * `ddo` assumes that `Dockerfile` defines `WORKDIR /workspace`
+* `ddo` on OSX requires coreutils:
+
+    `$ brew install coreutils`
 
 ## Sample Use-Case
 
