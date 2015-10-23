@@ -42,7 +42,7 @@ if [[ "$1" == '--' ]]; then
 fi
 
 # command compatability for Linux/OSX
-(readlink -f . > /dev/null 2>&1 && readlink_cmd=$(which readlink)) || readlink_cmd=$(which greadlink) || \
+readlink -f . > /dev/null 2>&1 && readlink_cmd=$(which readlink) || readlink_cmd=$(which greadlink) || \
     echo "Cannot find a valid 'readlink -f' command"
 md5_cmd=$(which md5sum) || md5_cmd="$(which md5) -r" || \
     echo "Cannot find a valid 'md5sum' or 'md5' command"
