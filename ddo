@@ -41,11 +41,27 @@ if [[ "$1" == '--' ]]; then
     docker_run_args="$*"
 fi
 
-# command compatability for Linux/OSX
-readlink -f . > /dev/null 2>&1 && readlink_cmd=$(which readlink) || readlink_cmd=$(which greadlink) || \
-    echo "Cannot find a valid 'readlink -f' command"
-md5_cmd=$(which md5sum) || md5_cmd="$(which md5) -r" || \
-    echo "Cannot find a valid 'md5sum' or 'md5' command"
+# command compatabile commands
+if readlink -f . > /dev/null 2>&1 ; then
+    readlink_cmd=$(which readlink)
+else
+    if greadlink -f . > /dev/null 2>&1 ; then
+        readlink_cmd=$(which greadlink)
+    else
+        echo "Cannot find a valid 'readlink -f' command"
+        exit 1
+    fi
+fi
+if md5sum --version > /dev/null 2>&1 ; then
+    md5_cmd=$(which md5sum)
+else
+    if md5 -x > /dev/null 2>&1 ; then
+        md5_cmd="$(which md5) -r"
+    else
+        echo "Cannot find a valid 'md5sum' or 'md5' command"
+        exit 1
+    fi
+fi
 
 # find the nearest Dockerfile up the tree
 Dockerfile_dir=$(pwd)
