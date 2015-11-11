@@ -26,11 +26,10 @@ function printv {
 verbose=$DDO_VERBOSE
 
 # aggregate all arguments until '--' as the command
+if [[ "$1" == "-h" ]] || [[ "$1" == "--help" ]]; then
+die_usage
+fi
 while [[ $# -gt 0 ]] && [[ "$1" != '--' ]]; do
-    if [[ "$1" == "-h" ]] || [[ "$1" == "--help" ]]; then
-        die_usage
-    fi
-
     cmd="$cmd $1"
     shift 1
 done
